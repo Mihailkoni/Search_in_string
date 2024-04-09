@@ -138,11 +138,7 @@ int max_for_TBM(int a, int b, int c) {
     return c;
 }
 
-bool TBM(string const str,int str_len,string const pattern,int pattern_len,int pattern_count) {
-    int good_suffixs[pattern_max_len], bad_symbols[alphabet_size];
-    good_suffix(pattern, pattern_len, good_suffixs);
-    bad_symbol(pattern, pattern_len, bad_symbols);
-
+bool TBM(string const str,int str_len,string const pattern,int pattern_len,int pattern_count,int good_suffixs[pattern_max_len],int bad_symbols[alphabet_size]) {
     int count = 0; // счётчик вхождения паттерна
     int i = 0, u = 0, shift = 0;
     while (i <= str_len - pattern_len) {
@@ -281,10 +277,18 @@ void Call_Turbo_Boyer_Moore() {
     string const pattern_fio = "SZ"; // паттерн фио
     int pattern_fio_len = pattern_fio.length(); // длина паттерна фио
     int pattern_fio_count = 1; // количество вхождений паттерна в строке фио
+    int good_fio_suffixs[pattern_max_len], bad_fio_symbols[alphabet_size];
+    good_suffix(pattern_fio, pattern_fio_len, good_fio_suffixs);
+    bad_symbol(pattern_fio, pattern_fio_len, bad_fio_symbols);
+
+
 
     string const pattern_title = "H"; // паттерн направления
     int pattern_title_len = pattern_title.length(); // длина паттерна направления
     int pattern_title_count = 2; // количество вхождений паттерна в строке направления
+    int good_title_suffix[pattern_max_len], bad_title_symbols[alphabet_size];
+    good_suffix(pattern_title, pattern_title_len, good_title_suffix);
+    bad_symbol(pattern_title, pattern_title_len, bad_title_symbols);
 
     auto startTBM = high_resolution_clock::now(); // время начала
     for (int i = 0; i < n; i++) {
@@ -295,7 +299,7 @@ void Call_Turbo_Boyer_Moore() {
         string str_title = arrTBM[i].dir.title; // строка поля направления
         int str_title_len = str_title.length(); // длина строки направления
 
-        if ((TBM(str_fio, str_fio_len, pattern_fio, pattern_fio_len, pattern_fio_count)) && (TBM(str_title,str_title_len,pattern_title,pattern_title_len,pattern_title_count))) {
+        if ((TBM(str_fio, str_fio_len, pattern_fio, pattern_fio_len, pattern_fio_count,good_fio_suffixs,bad_fio_symbols)) && (TBM(str_title,str_title_len,pattern_title,pattern_title_len,pattern_title_count,good_title_suffix,bad_title_symbols))) {
             answer.push_back(arrTBM[i]);
         }
     }
