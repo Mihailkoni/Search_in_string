@@ -129,6 +129,7 @@
   <ItemGroup>
     <Text Include="Input.txt" />
     <Text Include="Output_Rabin_Karp.txt" />
+    <Text Include="Output_Turbo_Boyer_Moore.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2.1.cpp" />

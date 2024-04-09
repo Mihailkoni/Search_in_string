@@ -21,6 +21,9 @@
     <Text Include="Output_Rabin_Karp.txt">
       <Filter>Исходные файлы</Filter>
     </Text>
+    <Text Include="Output_Turbo_Boyer_Moore.txt">
+      <Filter>Исходные файлы</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="2.1.cpp">

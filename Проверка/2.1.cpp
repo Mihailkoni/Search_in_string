@@ -4,6 +4,7 @@
 #include <fstream> // для чтения и записи файла
 #include <string> // для работы со строками
 #include <iomanip> // для перевода времени из(fixed);
+#include <algorithm> // для max min
 using namespace std;
 using namespace chrono;
 
@@ -24,8 +25,8 @@ struct key {
         string title; // название направления
     }dir;
 
-    const string to_String() { // для возвращения целой строки
-        return fio.surname + " " + fio.name + " " + fio.patronymic + " " + dir.title;
+    const string to_String_Fio() { // для возвращения целой строки FIO
+        return fio.surname + " " + fio.name + " " + fio.patronymic;
     }
 };
 
@@ -72,27 +73,121 @@ bool check_equals_strings(string const& str1, string const str2, int start1, int
     }
     return true;
 }
-//переписать чтобы искал количество паттернов и чтобы на каждое поле свой паттерн(вынести for в callRK и посокращать RK)
-void RK(vector<key>& arr, long const& arr_len, string const& pattern, int const& pattern_len, int& pattern_hash, vector<key>& answer) { // рабин-карп
-    for (int i = 0; i < arr_len; i++) {
-        const string str = arr[i].to_String();
-        int str_len = str.length();
-        int str_hash = first_hash(str,pattern_len);
-        for (int j = 0; j <= (str_len - pattern_len); j++) {
+
+bool RK(string const str,int& str_len,int& str_hash, string const& pattern, int const& pattern_len, int const& pattern_hash,int const& pattern_count) { // рабин-карп
+    int count = 0;
+    for (int j = 0; j <= (str_len - pattern_len); j++) {
             if ((str_hash == pattern_hash) && check_equals_strings(str, pattern, j, j + pattern_len - 1, 0, pattern_len - 1)) {
-                answer.push_back(arr[i]);
+                //answer.push_back(arr[i]);
+                count++;
+                if (count == pattern_count) {
+                    return true;
+                }
             }
             if (j < (str_len - pattern_len)) {
                 str_hash = refresh_hash(str, j, j + pattern_len, str_hash, pattern_len);
             }
-        }
     }
+    return false;
 };
 
 ///////////////////////////////////////////
 
-void TBM() {
+const int alphabet_size = 256;
+const int pattern_max_len = 10;
 
+void bad_symbol(const string& pattern,int& pattern_len,int bad_symbols[]) {
+    for (int i = 0; i < alphabet_size; ++i) {
+        bad_symbols[i] = pattern_len;
+    }
+    for (int j = 0; j < pattern_len - 1; ++j) {
+        bad_symbols[pattern[j]] = pattern_len - j - 1;
+    }
+}
+
+void good_suffix(const string& pattern, int& pattern_len, int good_suffixs[]) {
+    int f[pattern_max_len];
+    for (int i = 0; i < pattern_len; ++i) {
+        good_suffixs[i] = 0;
+    }
+    f[pattern_len] = pattern_len + 1;
+    for (int i = pattern_len; i > 0; --i) {
+        int j = pattern_len + 1;
+        while ((j <= pattern_len) && (pattern[i - 1] != pattern[j - 1])) {
+            if (good_suffixs[j] == 0) {
+                good_suffixs[j] = j - 1;
+            }
+            j = f[j];
+        }
+        f[i - 1] = --j;
+    }
+    int p = f[0];
+    for (int j = 0; j <= pattern_len; ++j) {
+        if (good_suffixs[j] == 0) {
+            good_suffixs[j] = p;
+        }
+        if (j == p) {
+            p = f[p];
+        }
+    }
+}   
+
+int max_for_TBM(int a, int b, int c) {
+    if (a >= b && a >= c) return a;
+    if (b >= a && b >= c) return b;
+    return c;
+}
+
+bool TBM(string const str,int str_len,string const pattern,int pattern_len,int pattern_count) {
+    int good_suffixs[pattern_max_len], bad_symbols[alphabet_size];
+    good_suffix(pattern, pattern_len, good_suffixs);
+    bad_symbol(pattern, pattern_len, bad_symbols);
+
+    int count = 0; // счётчик вхождения паттерна
+    int i = 0, u = 0, shift = 0;
+    while (i <= str_len - pattern_len) {
+        int j = pattern_len - 1;
+        while ((j >= 0) && (pattern[j] == str[i + j])) {
+            --j;
+            if ((u != 0) && (j == pattern_len - 1 - shift)) {
+                j -= u;
+            }
+        }
+        if (j < 0) {
+            count++;
+            if (count == pattern_count) {
+                return true;
+            }
+            shift = good_suffixs[0];
+            u = pattern_len - shift;
+        }
+        else {
+            int v = pattern_len - 1 - j;
+            int turbo_Shift = u - v;
+            int bad_symbol_shift = bad_symbols[str[i + j] - pattern_len + j + 1];
+            shift = max_for_TBM(turbo_Shift,bad_symbol_shift,good_suffixs[j + 1]);
+            if (shift == good_suffixs[j + 1]) {
+                if ((pattern_len - shift) < v) {
+                    u = pattern_len - shift;
+                }
+                else {
+                    u = v;
+                }
+                //u = min(pattern_len - shift, v);
+            }
+            else {
+                if (turbo_Shift < bad_symbol_shift) {
+                    if (shift < (u + 1)) {
+                        shift = u + 1;
+                    }
+                    //shift = max(shift,u+1);
+                }
+                u = 0;
+            }
+        }
+        i += shift;
+    }
+    return false;
 };
 
 ///////////////////////////////////////////
@@ -146,27 +241,71 @@ void Call_Rabin_Karp() {
     read_file(arrRK, "Input.txt"); // чтение файла
     long n = arrRK.size(); // длинна массива
 
-    string const pattern = "SZYF"; // паттерн
-    int pattern_len = pattern.length(); // длина паттерна
-    int pattern_hash = first_hash(pattern, pattern_len); // хэш паттерна
+    string const pattern_fio = "SZ"; // паттерн фио
+    int pattern_fio_len = pattern_fio.length(); // длина паттерна фио
+    int pattern_fio_hash = first_hash(pattern_fio, pattern_fio_len); // хэш паттерна фио
+    int pattern_fio_count = 1; // количество вхождений паттерна в строке фио
+
+    string const pattern_title = "H"; // паттерн направления
+    int pattern_title_len = pattern_title.length(); // длина паттерна направления
+    int pattern_title_hash = first_hash(pattern_title, pattern_title_len);
+    int pattern_title_count = 2; // количество вхождений паттерна в строке направления
 
     auto startRK = high_resolution_clock::now(); // время начала 
-    RK(arrRK, n, pattern, pattern_len, pattern_hash, answer);
+    for (int i = 0; i < n; i++) {
+
+        string str_fio = arrRK[i].to_String_Fio();// строка поля фио
+        int str_fio_len = str_fio.length(); // длина строки фио
+        int str_fio_hash = first_hash(str_fio, pattern_fio_len); // хэш фио
+
+        string str_title = arrRK[i].dir.title; // строка поля направления
+        int str_title_len = str_title.length(); // длина строки направления
+        int str_title_hash = first_hash(str_title, pattern_title_len); // хэш направления
+
+        if (RK(str_fio, str_fio_len, str_fio_hash, pattern_fio, pattern_fio_len, pattern_fio_hash, pattern_fio_count) && RK(str_title,str_title_len,str_title_hash,pattern_title,pattern_title_len,pattern_title_hash,pattern_title_count)) {
+            answer.push_back(arrRK[i]);
+        }
+       
+    }
     auto endRK = high_resolution_clock::now(); // время конца
     duration<double> diffRK = endRK - startRK; // время работы алгоритма
-    write_file(answer, diffRK, "Output_Rabin_Karp.txt"); // запись в файл
+    write_file(answer, diffRK, "Output_Rabin_Karp.txt"); // запись в выходной файл
 };
 
-/*void Call_Turbo_Boyer_Moore() {
-    vector<key>arrTBM;
-    read_file(arrTBM,"Input.txt");
-    long n = arrTBM.size();
-    //время
+void Call_Turbo_Boyer_Moore() {
+    vector<key>arrTBM;// массив для ключей
+    vector<key>answer;// массив для ответов
+    read_file(arrTBM, "Input.txt"); // чтение файла
+    long n = arrTBM.size(); // длинна массива
 
-};*/
+    string const pattern_fio = "SZ"; // паттерн фио
+    int pattern_fio_len = pattern_fio.length(); // длина паттерна фио
+    int pattern_fio_count = 1; // количество вхождений паттерна в строке фио
+
+    string const pattern_title = "H"; // паттерн направления
+    int pattern_title_len = pattern_title.length(); // длина паттерна направления
+    int pattern_title_count = 2; // количество вхождений паттерна в строке направления
+
+    auto startTBM = high_resolution_clock::now(); // время начала
+    for (int i = 0; i < n; i++) {
+
+        string str_fio = arrTBM[i].to_String_Fio();// строка поля фио
+        int str_fio_len = str_fio.length(); // длина строки фио
+
+        string str_title = arrTBM[i].dir.title; // строка поля направления
+        int str_title_len = str_title.length(); // длина строки направления
+
+        if ((TBM(str_fio, str_fio_len, pattern_fio, pattern_fio_len, pattern_fio_count)) && (TBM(str_title,str_title_len,pattern_title,pattern_title_len,pattern_title_count))) {
+            answer.push_back(arrTBM[i]);
+        }
+    }
+    auto endTBM = high_resolution_clock::now(); // время конца
+    duration<double>diffTBM = endTBM - startTBM; // время работы алгоритма
+    write_file(answer, diffTBM, "Output_Turbo_Boyer_Moore.txt"); // запись в выходной файл
+}
 
 int main() {
     Call_Rabin_Karp();
-    //Call_Turbo_Boyer_Moore();
+    Call_Turbo_Boyer_Moore();
     return 0;
 }
